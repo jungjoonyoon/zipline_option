@@ -340,6 +340,7 @@ def order_target(asset, target, limit_price=None, stop_price=None, style=None):
     order_id : str
         The unique identifier for this order.
 
+
     Notes
     -----
     ``order_target`` does not take into account any open orders. For
@@ -364,3 +365,108 @@ def order_target(asset, target, limit_price=None, stop_price=None, style=None):
     :func:`zipline.api.order_target_percent`
     :func:`zipline.api.order_target_value`
     """
+
+def order_target_percent(asset, target, limit_price=None, stop_price=None, style=None):
+    """Place an order to adjust a position to a target percent of the
+    current portfolio value. If the position doesn't already exist, this is
+    equivalent to placing a new order. If the position does exist, this is
+    equivalent to placing an order for the difference between the target
+    percent and the current percent.
+
+    Parameters
+    ----------
+    asset : Asset
+        The asset that this order is for.
+    target : float
+        The desired percentage of the portfolio value to allocate to
+        ``asset``. This is specified as a decimal, for example:
+        0.50 means 50%
+    limit_price : float, optional
+        The limit price for the order.
+    stop_price : float, optional
+        The stop price for the order.
+    style : ExecutionStyle
+        The execution style for the order.
+
+    Returns
+    -------
+    order_id : str
+        The unique identifier for this order.
+
+    Notes
+    -----
+    ``order_target_value`` does not take into account any open orders. For
+    example:
+
+    .. code-block:: python
+
+       order_target_percent(sid(0), 10)
+       order_target_percent(sid(0), 10)
+
+    This code will result in 20% of the portfolio being allocated to sid(0)
+    because the first call to ``order_target_percent`` will not have been
+    filled when the second ``order_target_percent`` call is made.
+
+    See :func:`zipline.api.order` for more information about
+    ``limit_price``, ``stop_price``, and ``style``
+
+    See Also
+    --------
+    :class:`zipline.finance.execution.ExecutionStyle`
+    :func:`zipline.api.order`
+    :func:`zipline.api.order_target`
+    :func:`zipline.api.order_target_value`
+    """
+
+def order_target_value(asset, target, limit_price=None, stop_price=None, style=None):
+    """Place an order to adjust a position to a target value. If
+    the position doesn't already exist, this is equivalent to placing a new
+    order. If the position does exist, this is equivalent to placing an
+    order for the difference between the target value and the
+    current value.
+    If the Asset being ordered is a Future, the 'target value' calculated
+    is actually the target exposure, as Futures have no 'value'.
+
+    Parameters
+    ----------
+    asset : Asset
+        The asset that this order is for.
+    target : float
+        The desired total value of ``asset``.
+    limit_price : float, optional
+        The limit price for the order.
+    stop_price : float, optional
+        The stop price for the order.
+    style : ExecutionStyle
+        The execution style for the order.
+
+    Returns
+    -------
+    order_id : str
+        The unique identifier for this order.
+
+    Notes
+    -----
+    ``order_target_value`` does not take into account any open orders. For
+    example:
+
+    .. code-block:: python
+
+       order_target_value(sid(0), 10)
+       order_target_value(sid(0), 10)
+
+    This code will result in 20 dollars of ``sid(0)`` because the first
+    call to ``order_target_value`` will not have been filled when the
+    second ``order_target_value`` call is made.
+
+    See :func:`zipline.api.order` for more information about
+    ``limit_price``, ``stop_price``, and ``style``
+
+    See Also
+    --------
+    :class:`zipline.finance.ececution.ExecutionStyle`
+    :func:`zipline.api.order`
+    :func:`zipline.api.order_target`
+    :func:`zipline.api.order_target_percent`
+    """
+    
