@@ -780,3 +780,158 @@ class TradingAlgorithm(object):
                 raise ValueError(
                     '%r is not a valid field for get_environment' % field,
                 )
+
+    @api_method
+    def fetch_csv(self,
+                  url,
+                  pre_func=None,
+                  post_func=None,
+                  date_column='date',
+                  date_format=None,
+                  timezone=pytz.utc.zone,
+                  symbol=None,
+                  mask=True,
+                  symbol_column=None,
+                  special_params_checker=None,
+                  country_code=None,
+                  **kwargs):
+        """Fetch a csv from a remote url and register the data so that it is
+        queryable from the ``data`` object.
+
+        Parameters
+        ----------
+        url : str
+            The url of the csv file to load.
+        pre_func : callable[pd.DataFrame -> pd.DataFrame], optional
+            A callback to allow preprocessing the raw data returned from
+            fetch_csv before dates are paresed or symbols are mapped.
+        post_func : callable[pd.DataFrame -> pd.DataFrame], optional
+            A callback to allow postprocessing of the data after dates and
+            symbols have been mapped.
+        date_column : str, optional
+            The name of the column in the preprocessed dataframe containing
+            datetime information to map the data.
+        date_format : str, optional
+            The format of the dates in the ``date_column``. If not provided
+            ``fetch_csv`` will attempt to infer the format. For information
+            about the format of this string, see :func:`pandas.read_csv`.
+        timezone : tzinfo or str, optional
+            The timezone for the datetime in the ``date_column``.
+        symbol : str, optional
+            If the data is about a new asset or index then this string will
+            be the name used to identify the values in ``data``. For example,
+            one may use ``fetch_csv`` to load data for VIX, then this field
+            could be the string ``'VIX'``.
+        mask : bool, optional
+            Drop any rows which cannot be symbol mapped.
+        symbol_column : str
+            If the data is attaching some new attribute to each asset then this
+            argument is the name of the column in th preprocessed dataframe
+            containing the symbols. This will be used along with the date
+            information to map the sids in the asset finder.
+        country_code : str, optional
+            Country code to use to disambiguate symbol lookups.
+        **kwargs
+            Forwarded to :func:`pandas.read_csv`.
+
+        Returns
+        -------
+        csv_data_source : zipline.sources.requests_csv.PandasRequestsCSV
+            A requests source that will pull data from the url specified.
+        """
+        if country_code is None:
+            country_code = self.default_fetch_csv_country_code(
+                self.trading_calendar,
+            )
+
+        # Show alll the logs every time fetcher is used.
+        csv_data_source = PandasRequestsCSV(
+            url,
+            pre_func,
+            post_func,
+            self.asset_finder,
+            self.trading_calendar.day,
+            self.sim_params.start_session,
+            self.sim_params.end_session,
+            date_column,
+            date_format,
+            timezone,
+            symbol,
+            mask,
+            symbol_column,
+            data_freqeuncy=self.data_frequency,
+            country_code=country_code,
+            special_params_checker=special_params_checker,
+            **kwargs
+        )
+
+        # ingest this into dataportal
+        self.data_portal.handle_extra_source(csv_data_source.df,
+                                             self.sim_params)
+
+        return csv_data_source
+
+    def add_event(self, rule, callback):
+        """Adds an event to the algorithm's EventManager.
+
+        Parameters
+        ----------
+        rule : EventRule
+            The rule for when the callback should be triggered.
+        callback : callable[(context, data) -> None]
+            The function to execute when the rule is triggered.
+        """
+        self.event_manager.add_event(
+            zipline.utils.events.Event(rule, callback),
+        )
+
+    @api_method
+    def schedule_function(self,
+                          func,
+                          date_rule=None,
+                          time_rule=None,
+                          half_days=True,
+                          calendar=None):
+        """Schedules a function to be called according to some timed rules.
+
+        Parameters
+        ----------
+        func : callable[(context, data) -> None]
+            The function to execute when the rule is triggered.
+        date_rule : EventRule, optional
+            The rule for the dates to execute this function.
+        time_rule : EventRule, optional
+            The rule for the times to execute this function.
+        half_days : bool, optional
+            Should this rule fire on half days?
+        calendar : Sentinel, optional
+            Calendar used to reconcile date and time rules.
+
+        See Also
+        --------
+        :class:`zipline.api.date_rules`
+        :class:`zipline.api.time_rules`
+        """
+
+        # When the user calls schedule_function(func <time_rule>), assume that
+        # the user meant to specify a time rule but no date rule, instead of
+        # a date rule and no time rule as the signature suggests
+        if isinstance(date_rule, (AfterOpen, BeforeClose)) and not time_rule:
+            warnings.warn('Got a time rule for the second positional argument '
+                          'date_rule. You should use keyword argument '
+                          'time_rule= when calling schedule_function without '
+                          'specifying a date_rule', stacklevel=3)
+
+        date_rule = date_rule or date_rules.every_day()
+        time_rule = ((time_rule or time_rules.every_minute())
+                     if self.sim_params.data_frequency == 'minute' else
+                     # If we are in daily mode the time_rule is ignored.
+                     time_rules.every_minute())
+
+        # Check the type of the algorithm's schedule before pulling calendar
+        # Note that the ExchangeTradingSchedule is currently the only
+        # TradingSchedule class, so this is unlikely to be hit
+        if calendar is None:
+            cal = self.trading_calendar
+        elif calendar is calendars.US_EQUITIES:
+            cal =
