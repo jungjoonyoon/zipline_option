@@ -1,2 +1,5 @@
 # zipline_option
-Zipline Options, a Pythonic Algorithmic Trading Library for Options
+Zipline Option, a Pythonic Algorithmic Trading Library for Option
+
+Will be re-typing the main zipline project word by word.
+Once it's done, will rewrite it for option trading
