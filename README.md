@@ -1,5 +1,5 @@
 # zipline_option
-Zipline Option, a Pythonic Algorithmic Trading Library for Option
+Zipline, a Pythonic Algorithmic Trading Library
 
 
 Will be re-typing the main zipline project word by word.
